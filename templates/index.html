@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentinel AI Concierge - Capstone System</title>
+    <style>
+        /* CSS for a clean, Gemini-like interface */
+        :root {
+            --bg-color: #f7f9fc;
+            --chat-bg: #ffffff;
+            --user-bubble: #1a73e8;
+            --agent-bubble: #e8f0fe;
+            --text-color: #1f1f1f;
+            --input-bg: #ffffff;
+            --border-color: #dadce0;
+            --font-family: 'Google Sans', Roboto, Arial, sans-serif;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            max-width: 800px;
+            height: 100%;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .header {
+            padding: 15px 25px;
+            font-size: 24px;
+            font-weight: 500;
+            color: var(--text-color);
+            background-color: var(--chat-bg);
+            border-bottom: 1px solid var(--border-color);
+            text-align: center;
+        }
+        
+        .header strong {
+            color: var(--user-bubble);
+            font-weight: bold;
+        }
+
+        .chat-window {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background-color: var(--chat-bg);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .message {
+            display: flex;
+            align-items: flex-start;
+            max-width: 85%;
+        }
+
+        .message.user {
+            justify-content: flex-end;
+            margin-left: auto;
+        }
+
+        .avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 10px;
+            flex-shrink: 0;
+        }
+
+        .message.user .avatar {
+            background-color: var(--user-bubble);
+            color: white;
+            margin-right: 0;
+            margin-left: 10px;
+        }
+
+        .message.agent .avatar {
+            background-color: var(--agent-bubble);
+            color: var(--user-bubble);
+        }
+
+        .bubble {
+            padding: 12px 18px;
+            border-radius: 20px;
+            line-height: 1.5;
+            color: var(--text-color);
+            word-wrap: break-word;
+        }
+
+        .message.user .bubble {
+            background-color: var(--user-bubble);
+            color: white;
+            border-bottom-right-radius: 5px;
+        }
+
+        .message.agent .bubble {
+            background-color: var(--agent-bubble);
+            border: 1px solid #c8e2ff;
+            border-bottom-left-radius: 5px;
+            white-space: pre-wrap; /* Preserve formatting for detailed agent output */
+        }
+        
+        .input-area {
+            display: flex;
+            padding: 15px 20px;
+            background-color: var(--input-bg);
+            border-top: 1px solid var(--border-color);
+            box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.05);
+        }
+
+        #user-input {
+            flex-grow: 1;
+            padding: 12px 20px;
+            border-radius: 25px;
+            border: 1px solid var(--border-color);
+            font-size: 16px;
+            outline: none;
+            resize: none;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+
+        #send-button {
+            background-color: var(--user-bubble);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            margin-left: 10px;
+            font-size: 20px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #send-button:hover {
+            background-color: #155bb9;
+        }
+
+        .loading-dots {
+            font-size: 24px;
+            margin-top: 5px;
+            animation: blink 1.5s infinite;
+            color: var(--user-bubble);
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 0.2; }
+            50% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            Sentinel <strong>AI</strong> Concierge System
+        </div>
+        
+        <div class="chat-window" id="chat-window">
+            <div class="message agent">
+                <div class="avatar">S</div>
+                <div class="bubble">
+                    Welcome to the Sentinel AI Capstone System! I'm an orchestrator guiding 6 specialized agents (Travel, Meal Plan, Admin, Health, General, and Verification). How can I help you today?
+                </div>
+            </div>
+            </div>
+
+        <div class="input-area">
+            <textarea id="user-input" placeholder="Type your query..." rows="1" oninput="autoExpand(this)" onkeydown="checkSubmit(event)"></textarea>
+            <button id="send-button" onclick="sendMessage()">➤</button>
+        </div>
+    </div>
+
+    <script>
+        const chatWindow = document.getElementById('chat-window');
+        const userInput = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+
+        // Function to create a new message bubble
+        function createMessageElement(sender, content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+            
+            const avatarDiv = document.createElement('div');
+            avatarDiv.className = 'avatar';
+            avatarDiv.textContent = sender === 'user' ? 'You' : 'S';
+
+            const bubbleDiv = document.createElement('div');
+            bubbleDiv.className = 'bubble';
+            
+            // Use innerHTML to allow for Markdown/HTML content in agent response
+            if (sender === 'agent') {
+                 // Convert newlines to <br> for better formatting in the bubble
+                bubbleDiv.innerHTML = content.replace(/\n/g, '<br>');
+            } else {
+                bubbleDiv.textContent = content;
+            }
+
+            if (sender === 'user') {
+                messageDiv.appendChild(bubbleDiv);
+                messageDiv.appendChild(avatarDiv);
+            } else {
+                messageDiv.appendChild(avatarDiv);
+                messageDiv.appendChild(bubbleDiv);
+            }
+            
+            chatWindow.appendChild(messageDiv);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+            return messageDiv;
+        }
+
+        // Auto-expand textarea for multi-line input
+        function autoExpand(field) {
+            field.style.height = 'inherit';
+            field.style.height = (field.scrollHeight) + 'px';
+        }
+
+        // Send message on Enter key (Shift+Enter for new line)
+        function checkSubmit(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        }
+
+        // --- History Saver: Fetching History on Load ---
+        function loadHistory() {
+            fetch('/history')
+                .then(response => response.json())
+                .then(data => {
+                    // Clear the initial welcome message
+                    chatWindow.innerHTML = '';
+                    createMessageElement('agent', "Welcome to the Sentinel AI Capstone System! I'm an orchestrator guiding 6 specialized agents (Travel, Meal Plan, Admin, Health, General, and Verification). How can I help you today?");
+                    
+                    data.history.forEach(item => {
+                        createMessageElement('user', item.user);
+                        createMessageElement('agent', item.agent);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading history:', error);
+                });
+        }
+        
+        window.onload = loadHistory;
+        // ---------------------------------------------
+
+
+        // Main function to send the message
+        function sendMessage() {
+            const message = userInput.value.trim();
+            if (message === '') return;
+
+            // 1. Display user message
+            createMessageElement('user', message);
+            userInput.value = '';
+            autoExpand(userInput); // Reset textarea size
+
+            // 2. Display loading indicator
+            const loadingElement = createMessageElement('agent', '<div class="loading-dots">...</div>');
+            sendButton.disabled = true;
+
+            // 3. Send message to Flask server
+            fetch('/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ message: message }),
+            })
+            .then(response => {
+                // Ensure loading indicator is removed regardless of success/fail
+                loadingElement.remove(); 
+                sendButton.disabled = false;
+                
+                if (!response.ok) {
+                    return response.json().then(err => Promise.reject(err));
+                }
+                return response.json();
+            })
+            .then(data => {
+                // 4. Display agent response
+                createMessageElement('agent', data.response);
+            })
+            .catch(error => {
+                // 4. Display error message
+                console.error('Chat failed:', error);
+                const errorMessage = error.error || "Sorry, the agent system encountered an error. Check the server logs.";
+                createMessageElement('agent', `**ERROR:** ${errorMessage}`);
+            });
+        }
+    </script>
+</body>
+</html>
