@@ -74,7 +74,7 @@ The true capability of the agent is demonstrated with a combined query that nece
 * `app.py`: The main file containing the agent orchestration, function definitions, and core Gemini API logic.
 * `index.html`: The simple frontend interface for user interaction.
 
-### Future Work 🚀
+### Features Work 🚀
 
 * **Multi-agent system**: Implementing a self-correction mechanism to validate tool outputs before responding to the user.
 * **Sessions & Memory**: Integrating a user-specific long-term memory module to maintain personalized context across sessions.
